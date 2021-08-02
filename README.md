@@ -41,3 +41,5 @@ SNES Face Buttons | Right Stick
 
 This project uses [Dave Madison's ArduinoXInput Library](https://github.com/dmadison/ArduinoXInput). You will need to install his [XInput USB Core](https://github.com/dmadison/ArduinoXInput_AVR) to use it on your board. Please read the documentation of both projects to find out how to set it up on a compatible board.
 
+To Do:
+Set up toggling of custom D-pad, arrow, and face button mappings to XInput Left Stick, Right Stick, D-pad, and face buttons.
