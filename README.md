@@ -19,9 +19,9 @@ Pin | Function
 15 | SNES Data Pin
 14 | SNES Latch Pin
 16 | SNES Clock Pin
-2 | Toggles Controller DPad Mode
 
-Pad and Controller inputs map to the following XInput controls:
+
+Pad and Controller inputs map to the following XInput controls by default:
 
 Pad | XInput
 --- | ------
@@ -39,7 +39,19 @@ SNES L | Left Bumper
 SNES R | Right Bumper
 SNES Face Buttons | Right Stick
 
+Holding L+R+Select and pressing a direction on the Face Buttons, D-Pad, or DDR Pad will map them to the following XInput controls:
+
+Direction | XInput
+--------- | ------
+Left/Y | Left Stick
+Right/A | Right Stick
+Up/X | Face Buttons
+Down/B | D-Pad
+
+You can overload mappings, including having all three mapped the same. This configuration is saved to EEPROM on change and loaded upon powerup. In the event that the EEPROM data is not valid, controls will revert to defaults.
+
 This project uses [Dave Madison's ArduinoXInput Library](https://github.com/dmadison/ArduinoXInput). You will need to install his [XInput USB Core](https://github.com/dmadison/ArduinoXInput_AVR) to use it on your board. Please read the documentation of both projects to find out how to set it up on a compatible board.
 
 To Do:
-Set up toggling of custom D-pad, arrow, and face button mappings to XInput Left Stick, Right Stick, D-pad, and face buttons.
+~~Set up toggling of custom D-pad, arrow, and face button mappings to XInput Left Stick, Right Stick, D-pad, and face buttons.~~
+Have LEDs respond to player number data on startup and then switch to lighting up when pressed.
