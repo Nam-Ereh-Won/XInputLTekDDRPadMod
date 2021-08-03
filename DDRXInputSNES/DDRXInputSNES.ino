@@ -1,54 +1,79 @@
 #include <XInput.h>
-
+#include <EEPROM.h>
 
 const boolean UseTriggerButtons = true;
 
+enum DirectionType : uint8_t {
+  LEFT_STICK = 1,
+  RIGHT_STICK = 2,
+  DPAD = 4,
+  FACE_BUTTONS = 8,
+};
+
 // Button Pins
-const int pinA =        4;  //DDR Down Arrow
-const int pinB =        5;  //DDR Right Arrow
-const int pinX =        6;  //DDR Left Arrow
-const int pinY =        7;  //DDR Up Arrow
+const int pinDown =        4;  //DDR Down Arrow
+const int pinRight =        5;  //DDR Right Arrow
+const int pinLeft =        6;  //DDR Left Arrow
+const int pinUp =        7;  //DDR Up Arrow
 const int pinStart =    8;  //For Pads with Start/Back
 const int pinBack =     9;  //For Pads with Start/Back
 
 // LED Pins
-const int pinLEDA =     21;
-const int pinLEDB =     20;
-const int pinLEDX =     19;
-const int pinLEDY =     18;
+const int pinLEDDown =     21;
+const int pinLEDRight =     20;
+const int pinLEDLeft =     19;
+const int pinLEDUp =     18;
 
 // SNES/NES Pins
 const int snesData =    15;
 const int snesLatch =   14;
 const int snesClock =   16;
 
-// Joy/DPad Toggle pin
-const int dPadToggle =  2;
+DirectionType dPadMode, faceMode, ddrMode;
+
+boolean ddrDown, ddrRight, ddrLeft, ddrUp, xDown, xRight, xLeft, xUp, dDown, dRight, dLeft, dUp;
 
 void setup(){
   
-  pinMode(pinA, INPUT_PULLUP);
-  pinMode(pinB, INPUT_PULLUP);
-  pinMode(pinX, INPUT_PULLUP);
-  pinMode(pinY, INPUT_PULLUP);
+  pinMode(pinDown, INPUT_PULLUP);
+  pinMode(pinRight, INPUT_PULLUP);
+  pinMode(pinLeft, INPUT_PULLUP);
+  pinMode(pinUp, INPUT_PULLUP);
   pinMode(pinStart, INPUT_PULLUP);
   pinMode(pinBack, INPUT_PULLUP);
   
-  pinMode(pinLEDA, OUTPUT);
-  pinMode(pinLEDB, OUTPUT);
-  pinMode(pinLEDX, OUTPUT);
-  pinMode(pinLEDY, OUTPUT);
+  pinMode(pinLEDDown, OUTPUT);
+  pinMode(pinLEDRight, OUTPUT);
+  pinMode(pinLEDLeft, OUTPUT);
+  pinMode(pinLEDUp, OUTPUT);
   
   
   pinMode(snesData,INPUT_PULLUP);
   pinMode(snesLatch,OUTPUT);
   pinMode(snesClock,OUTPUT);
   
-  pinMode(dPadToggle,INPUT_PULLUP);
-  
   // Set Clock and Latch Low to start
   digitalWrite(snesClock,LOW);
   digitalWrite(snesLatch,LOW);
+
+  byte dPadEEP = EEPROM.read(0);
+  if (isModeValid(dPadEEP)){
+    dPadMode = dPadEEP;
+  } else {
+    dPadMode = DPAD;
+  }
+  byte faceEEP = EEPROM.read(1);
+  if (isModeValid(faceEEP)){
+    faceMode = faceEEP;
+  } else {
+    faceMode = RIGHT_STICK;
+  }
+  byte ddrEEP = EEPROM.read(2);
+  if (isModeValid(ddrEEP)){
+    ddrMode = ddrEEP;
+  } else {
+    ddrMode = FACE_BUTTONS;
+  }
   
   XInput.setAutoSend(false); 
   
@@ -56,36 +81,117 @@ void setup(){
   
 }
 
+boolean isModeValid(int modeVal){
+  switch(modeVal){
+    case LEFT_STICK:
+    case RIGHT_STICK:
+    case DPAD:
+    case FACE_BUTTONS:
+      return true;
+      break;
+    default:
+      return false;
+      break;
+  }
+}
+
 void loop(){
 
   // Gotta hold onto these for the LEDs
-  boolean buttonA = !digitalRead(pinA);
-  boolean buttonB = !digitalRead(pinB);
-  boolean buttonX = !digitalRead(pinX);
-  boolean buttonY = !digitalRead(pinY);
+  ddrDown = !digitalRead(pinDown);
+  ddrRight = !digitalRead(pinRight);
+  ddrLeft = !digitalRead(pinLeft);
+  ddrUp = !digitalRead(pinUp);
   
   // Set LEDs
-  digitalWrite(pinLEDA,buttonA);
-  digitalWrite(pinLEDB,buttonB);
-  digitalWrite(pinLEDX,buttonX);
-  digitalWrite(pinLEDY,buttonY);
+  digitalWrite(pinLEDDown,ddrDown);
+  digitalWrite(pinLEDRight,ddrRight);
+  digitalWrite(pinLEDLeft,ddrLeft);
+  digitalWrite(pinLEDUp,ddrUp);
   
-  // Set XInput buttons
-  XInput.setButton(BUTTON_A, buttonA);
-  XInput.setButton(BUTTON_B, buttonB);
-  XInput.setButton(BUTTON_X, buttonX);
-  XInput.setButton(BUTTON_Y, buttonY);
+  // Set DDR Arrows
+  
   
   snesBS();
   
+  if(faceMode==ddrMode && dPadMode==ddrMode){//all three set to same mode
+    DirectionSet(dUp||ddrUp||xUp,dDown||ddrDown||xDown,dLeft||ddrLeft||xLeft,dRight||ddrRight||xRight,dPadMode);
+  } else if (faceMode==ddrMode){//face and ddr set to same mode
+    DirectionSet(xUp||ddrUp,xDown||ddrDown,xLeft||ddrLeft,xRight||ddrRight,faceMode);
+    DirectionSet(dUp,dDown,dLeft,dRight,dPadMode);
+  } else if (dPadMode==ddrMode){//dpad and ddr set to same mode
+    DirectionSet(dUp||ddrUp,dDown||ddrDown,dLeft||ddrLeft,dRight||ddrRight,dPadMode);
+    DirectionSet(xUp,xDown,xLeft,xRight,faceMode);
+  } else if (dPadMode==faceMode){//dpad and face set to same mode
+    DirectionSet(xUp||dUp,xDown||dDown,xLeft||dLeft,xRight||dRight,dPadMode);
+    DirectionSet(ddrUp,ddrDown,ddrLeft,ddrRight,ddrMode);
+  } else {//all modes different
+    DirectionSet(xUp,xDown,xLeft,xRight,faceMode);
+    DirectionSet(dUp,dDown,dLeft,dRight,dPadMode);
+    DirectionSet(ddrUp,ddrDown,ddrLeft,ddrRight,ddrMode);
+  }
   // Allows for either Pad or Controller Start/Back to work properly
   XInput.setButton(BUTTON_START, XInput.getButton(BUTTON_START)||!digitalRead(pinStart));
   XInput.setButton(BUTTON_BACK, XInput.getButton(BUTTON_BACK)||!digitalRead(pinBack));
+
+  // If L+R+Select Pressed, start mode change
+  if (XInput.getButton(BUTTON_LB) && XInput.getButton(BUTTON_RB) && XInput.getButton(BUTTON_BACK) ) {
+    DirectionModeChange();
+  }
   
   XInput.send();
   
 }
 
+/* Changes mode of directional inputs as follows
+ *  Left - Left Stick
+ *  Right - Right Stick
+ *  Down - D-pad
+ *  Up - Face buttons
+ */
+void DirectionModeChange(){
+  XInput.releaseAll();
+  int ddr = ddrLeft+(ddrRight<<1)+(ddrDown<<2)+(ddrUp<<3);
+  int face = xLeft+(xRight<<1)+(xDown<<2)+(xUp<<3);
+  int dpad = dLeft+(dRight<<1)+(dDown<<2)+(dUp<<3);
+  
+  if (isModeValid(dpad) && dPadMode != dpad){
+    dPadMode = dpad;
+    EEPROM.update(0,dpad);
+  }
+
+  if(isModeValid(face) && faceMode != face){
+    faceMode = face;
+    EEPROM.update(1,face);
+  }
+
+  if(isModeValid(ddr) && ddrMode != ddr){
+    ddrMode = ddr;
+    EEPROM.update(2,ddr);
+  }
+
+
+}
+
+void DirectionSet(boolean up, boolean down, boolean left, boolean right, DirectionType mode ){
+  switch(mode){
+    case LEFT_STICK:
+      XInput.setJoystick(JOY_LEFT, up, down, left, right);
+      break;
+    case RIGHT_STICK:
+      XInput.setJoystick(JOY_RIGHT, up, down, left, right);
+      break;
+    case DPAD:
+      XInput.setDpad(up, down, left, right);
+      break;
+    case FACE_BUTTONS:
+        XInput.setButton(BUTTON_Y, up);
+        XInput.setButton(BUTTON_A, down);
+        XInput.setButton(BUTTON_X, left);
+        XInput.setButton(BUTTON_B, right);
+      break;
+  }
+}
 
 void snesBS(){
   
@@ -93,13 +199,11 @@ void snesBS(){
   digitalWrite(snesLatch,HIGH);
   digitalWrite(snesLatch,LOW);
   
-  // Cycle through the SNES/NES buttons. Delays added on dpad just in case. may not be needed.
-  delayMicroseconds(5);
-  boolean xDown = !digitalRead(snesData);  // SNES B Button | X-Down
+  // Cycle through the SNES/NES buttons. 
+  xDown = !digitalRead(snesData);  // SNES B Button | X-Down
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  delayMicroseconds(5);
-  boolean xLeft = !digitalRead(snesData);  // SNES Y Button | X-Left
+  xLeft = !digitalRead(snesData);  // SNES Y Button | X-Left
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
   XInput.setButton(BUTTON_BACK, !digitalRead(snesData));  // SNES Select Button
@@ -108,40 +212,27 @@ void snesBS(){
   XInput.setButton(BUTTON_START, !digitalRead(snesData));  // SNES Start Button
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  boolean dUp = !digitalRead(snesData); // SNES DPad Up
+  dUp = !digitalRead(snesData); // SNES DPad Up
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  boolean dDown = !digitalRead(snesData); // SNES DPad Down
+  dDown = !digitalRead(snesData); // SNES DPad Down
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  boolean dLeft = !digitalRead(snesData); // SNES DPad Left
+  dLeft = !digitalRead(snesData); // SNES DPad Left
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  boolean dRight = !digitalRead(snesData); // SNES DPad Right
+  dRight = !digitalRead(snesData); // SNES DPad Right
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  delayMicroseconds(5);
-  boolean xRight = !digitalRead(snesData);  // SNES A Button | X-Right
+  xRight = !digitalRead(snesData);  // SNES A Button | X-Right
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
-  delayMicroseconds(5);
-  boolean xUp = !digitalRead(snesData);  // SNES X Button | X-Up
+  xUp = !digitalRead(snesData);  // SNES X Button | X-Up
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
   XInput.setButton(BUTTON_LB, !digitalRead(snesData));  // SNES L Button
   digitalWrite(snesClock,HIGH);
   digitalWrite(snesClock,LOW);
   XInput.setButton(BUTTON_RB, !digitalRead(snesData));  // SNES R Button
-  
-  // Switches DPad between Left Stick and DPad based on toggle switch and clears the unused one.
-  if(digitalRead(dPadToggle)){
-    XInput.setDpad(dUp, dDown, dLeft, dRight);
-    XInput.setJoystick(JOY_LEFT, false, false, false, false);
-  } else {
-    XInput.setJoystick(JOY_LEFT, dUp, dDown, dLeft, dRight);
-    XInput.setDpad(false, false, false, false);
-  }
-  // Uses Controller Face buttons as right stick. May add some additional logic to allow Dpad, Face Buttons, and DDR Arrows to function as any combination of Sticks, DPad, and Face buttons.
-  XInput.setJoystick(JOY_RIGHT, xUp, xDown, xLeft, xRight);
   
 }
