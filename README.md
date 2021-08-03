@@ -31,8 +31,7 @@ DDR Left | X
 DDR Right | B
 DDR Start | Start
 DDR Back | Back
-SNES D-pad (toggle off) | D-pad
-SNES D-pad (toggle on) | Left Stick
+SNES D-pad | D-pad
 SNES Start | Start
 SNES Back | Back
 SNES L | Left Bumper
