@@ -55,3 +55,5 @@ This project uses [Dave Madison's ArduinoXInput Library](https://github.com/dmad
 To Do:
 ~~Set up toggling of custom D-pad, arrow, and face button mappings to XInput Left Stick, Right Stick, D-pad, and face buttons.~~
 Have LEDs respond to player number data on startup and then switch to lighting up when pressed.
+
+Shout out to Martin Natano for [documenting the issue with the original board](https://www.natano.net/blog/2019-12-14-usb-polling-adventure/) and inspiring this project.
